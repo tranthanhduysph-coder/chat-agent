@@ -39,7 +39,7 @@
                 <form id="message-form" class="flex items-center space-x-3">
                     <input type="text" id="message-input" placeholder="Nhập tin nhắn của bạn..." class="flex-1 w-full px-4 py-2 border border-slate-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500" autocomplete="off">
                     <button type="submit" id="send-btn" class="bg-blue-600 hover:bg-blue-700 text-white rounded-full p-3 flex items-center justify-center transition-colors">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
                     </button>
                 </form>
             </footer>
@@ -69,7 +69,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: 'create_thread' })
             });
-            if (!response.ok) throw new Error('Không thể tạo luồng trò chuyện.');
+
+            // === START: CODE ĐƯỢC CẬP NHẬT ===
+            if (!response.ok) {
+                // Đọc lỗi chi tiết từ server thay vì hiển thị lỗi chung chung
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Không thể tạo luồng trò chuyện.');
+            }
+            // === END: CODE ĐƯỢC CẬP NHẬT ===
             
             const data = await response.json();
             currentThreadId = data.threadId;
@@ -183,5 +190,4 @@ document.addEventListener('DOMContentLoaded', () => {
 
 </body>
 </html>
-
 
