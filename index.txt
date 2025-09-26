@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Học tập cùng Trợ lý AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        #chat-window::-webkit-scrollbar { width: 8px; }
+        #chat-window::-webkit-scrollbar-track { background: #f1f5f9; }
+        #chat-window::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 10px; }
+        #chat-window::-webkit-scrollbar-thumb:hover { background: #64748b; }
+        .message-bubble { max-width: 80%; }
+    </style>
+</head>
+<body class="bg-slate-100 flex items-center justify-center min-h-screen font-sans">
+
+    <div class="w-full max-w-2xl h-[90vh] flex flex-col bg-white rounded-2xl shadow-2xl">
+        
+        <div id="chat-screen" class="flex flex-1 flex-col h-full">
+            <header class="p-4 border-b border-slate-200">
+                <h2 class="text-xl font-bold text-slate-800 text-center">Mô hình học tập POWER</h2>
+                <p id="phase-indicator" class="text-center text-sm font-medium text-slate-500 mt-1">Pha: PREPARE</p>
+            </header>
+            
+            <main id="chat-window" class="flex-1 p-6 space-y-4 overflow-y-auto">
+                <div class="flex justify-start">
+                    <div class="message-bubble bg-slate-200 text-slate-800 rounded-lg py-2 px-4">
+                        Xin chào! Tôi là Trợ lý AI, sẵn sàng đồng hành cùng bạn trong quá trình học tập. Hãy bắt đầu pha PREPARE nhé!
+                    </div>
+                </div>
+            </main>
+
+            <footer class="p-4 border-t border-slate-200 bg-white">
+                <div id="loading-spinner" class="hidden flex items-center justify-center mb-2">
+                    <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-slate-600"></div>
+                    <p class="ml-2 text-slate-600">Trợ lý đang soạn câu trả lời...</p>
+                </div>
+                <form id="message-form" class="flex items-center space-x-3">
+                    <input type="text" id="message-input" placeholder="Nhập tin nhắn của bạn..." class="flex-1 w-full px-4 py-2 border border-slate-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500" autocomplete="off">
+                    <button type="submit" id="send-btn" class="bg-blue-600 hover:bg-blue-700 text-white rounded-full p-3 flex items-center justify-center transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                    </button>
+                </form>
+            </footer>
+        </div>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // UI Elements
+    const chatWindow = document.getElementById('chat-window');
+    const messageForm = document.getElementById('message-form');
+    const messageInput = document.getElementById('message-input');
+    const sendBtn = document.getElementById('send-btn');
+    const loadingSpinner = document.getElementById('loading-spinner');
+    const phaseIndicator = document.getElementById('phase-indicator');
+
+    // Trạng thái của ứng dụng
+    let currentThreadId = null;
+    let isWaiting = false;
+    let currentPhase = 'PREPARE'; // Bắt đầu với pha PREPARE
+
+    // Hàm khởi tạo cuộc trò chuyện
+    async function initializeChat() {
+        try {
+            const response = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'create_thread' })
+            });
+            if (!response.ok) throw new Error('Không thể tạo luồng trò chuyện.');
+            
+            const data = await response.json();
+            currentThreadId = data.threadId;
+            console.log('Thread created:', currentThreadId);
+        } catch (error) {
+            addMessageToUI(error.message, 'error');
+            setFormDisabled(true);
+        }
+    }
+
+    // Gửi tin nhắn khi submit form
+    messageForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const userMessage = messageInput.value.trim();
+        if (!userMessage || isWaiting || !currentThreadId) return;
+
+        setFormDisabled(true);
+        addMessageToUI(userMessage, 'user');
+        
+        try {
+            const response = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'send_message',
+                    userMessage: userMessage,
+                    threadId: currentThreadId,
+                    phase: currentPhase // Gửi kèm pha hiện tại
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Lỗi không xác định từ server.');
+            }
+            
+            const data = await response.json();
+            
+            // Hiển thị phản hồi của AI
+            addMessageToUI(data.reply, 'assistant');
+
+            // Cập nhật pha nếu có
+            if (data.newPhase) {
+                updatePhaseUI(data.newPhase);
+            }
+
+        } catch (error) {
+            console.error('Error sending message:', error);
+            addMessageToUI(`Đã xảy ra lỗi: ${error.message}`, 'error');
+        } finally {
+            setFormDisabled(false);
+        }
+    });
+
+    // Hàm cập nhật giao diện pha
+    function updatePhaseUI(newPhase) {
+        currentPhase = newPhase;
+        phaseIndicator.textContent = `Pha: ${currentPhase}`;
+        addMessageToUI(`Hệ thống đã chuyển sang pha: ${currentPhase}`, 'system');
+    }
+
+    // Hàm quản lý trạng thái form
+    function setFormDisabled(disabled) {
+        isWaiting = disabled;
+        messageInput.disabled = disabled;
+        sendBtn.disabled = disabled;
+        loadingSpinner.classList.toggle('hidden', !disabled);
+        if (!disabled) {
+            messageInput.value = '';
+            messageInput.focus();
+        }
+    }
+    
+    // Hàm thêm tin nhắn vào giao diện
+    function addMessageToUI(message, role) {
+        const messageWrapper = document.createElement('div');
+        const messageBubble = document.createElement('div');
+        
+        messageBubble.classList.add('message-bubble', 'rounded-lg', 'py-2', 'px-4', 'break-words');
+        messageWrapper.classList.add('flex', 'mb-2');
+
+        switch (role) {
+            case 'user':
+                messageWrapper.classList.add('justify-end');
+                messageBubble.classList.add('bg-blue-600', 'text-white');
+                break;
+            case 'assistant':
+                messageWrapper.classList.add('justify-start');
+                messageBubble.classList.add('bg-slate-200', 'text-slate-800');
+                break;
+            case 'system':
+                messageWrapper.classList.add('justify-center');
+                messageBubble.classList.add('bg-yellow-100', 'text-yellow-800', 'text-sm', 'italic');
+                break;
+            case 'error':
+                messageWrapper.classList.add('justify-center');
+                messageBubble.classList.add('bg-red-100', 'text-red-700', 'border', 'border-red-300');
+                break;
+        }
+        
+        messageBubble.innerHTML = message.replace(/\n/g, '<br>');
+        messageWrapper.appendChild(messageBubble);
+        chatWindow.appendChild(messageWrapper);
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+    }
+
+    // Bắt đầu ứng dụng
+    initializeChat();
+});
+</script>
+
+</body>
+</html>
+
+
