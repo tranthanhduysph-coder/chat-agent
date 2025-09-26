@@ -38,13 +38,21 @@ export default async function handler(req, res) {
         await new Promise(resolve => setTimeout(resolve, 1000));
         runStatus = await openai.beta.threads.runs.retrieve(threadId, run.id);
 
-        // PHẦN MỚI: Xử lý khi Trợ lý yêu cầu dùng công cụ
-        if (runStatus.status === 'requires_action') {
-            // Trong ví dụ này, chúng ta không thực sự chạy công cụ nào cả.
-            // Chúng ta chỉ gửi lại một danh sách kết quả rỗng để báo cho Trợ lý biết
-            // là công cụ đã "chạy xong" và nó có thể tiếp tục công việc.
+        // PHẦN ĐƯỢC NÂNG CẤP: Xử lý yêu cầu công cụ một cách cụ thể hơn
+        if (runStatus.status === 'requires_action' && runStatus.required_action) {
+            const toolCalls = runStatus.required_action.submit_tool_outputs.tool_calls;
+            
+            // Tạo một danh sách các kết quả rỗng tương ứng với mỗi yêu cầu công cụ
+            const toolOutputs = toolCalls.map(toolCall => {
+                return {
+                    tool_call_id: toolCall.id,
+                    output: "" // Trả về kết quả rỗng
+                };
+            });
+
+            // Gửi lại danh sách kết quả rỗng này cho Trợ lý
             await openai.beta.threads.runs.submitToolOutputs(threadId, run.id, {
-                tool_outputs: [], // Báo là không có kết quả từ công cụ
+                tool_outputs: toolOutputs,
             });
         }
 
