@@ -1,154 +1,17 @@
-<!DOCTYPE html>
-<html lang="vi">
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat với Trợ lý AI</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        #chat-window::-webkit-scrollbar { width: 8px; }
-        #chat-window::-webkit-scrollbar-track { background: #f1f5f9; }
-        #chat-window::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 10px; }
-        #chat-window::-webkit-scrollbar-thumb:hover { background: #64748b; }
-        .message-bubble { max-width: 80%; }
-    </style>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <title></title>
+  <meta name="Generator" content="Cocoa HTML Writer">
+  <meta name="CocoaVersion" content="2685.1">
+  <style type="text/css">
+    p.p1 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Times; -webkit-text-stroke: #000000}
+    span.s1 {font-kerning: none}
+  </style>
 </head>
-<body class="bg-slate-100 flex items-center justify-center min-h-screen font-sans">
-    <div class="w-full max-w-2xl h-[90vh] flex flex-col bg-white rounded-2xl shadow-2xl">
-        <div id="chat-screen" class="flex flex-1 flex-col h-full">
-            <header class="p-4 border-b border-slate-200">
-                <h2 class="text-xl font-bold text-slate-800 text-center">Chat với Trợ lý AI</h2>
-            </header>
-            <main id="chat-window" class="flex-1 p-6 space-y-4 overflow-y-auto">
-                 <div class="flex justify-start">
-                    <div class="message-bubble bg-slate-200 text-slate-800 rounded-lg py-2 px-4">
-                        Xin chào! Tôi là Trợ lý AI, tôi có thể giúp gì cho bạn?
-                    </div>
-                </div>
-            </main>
-            <footer class="p-4 border-t border-slate-200 bg-white">
-                <div id="loading-spinner" class="hidden flex items-center justify-center mb-2">
-                    <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-slate-600"></div>
-                    <p class="ml-2 text-slate-600">Trợ lý đang soạn câu trả lời...</p>
-                </div>
-                <form id="message-form" class="flex items-center space-x-3">
-                    <input type="text" id="message-input" placeholder="Nhập tin nhắn của bạn..." class="flex-1 w-full px-4 py-2 border border-slate-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500" autocomplete="off">
-                    <button type="submit" id="send-btn" class="bg-blue-600 hover:bg-blue-700 text-white rounded-full p-3 flex items-center justify-center transition-colors">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-send"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-                    </button>
-                </form>
-            </footer>
-        </div>
-    </div>
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-    const chatWindow = document.getElementById('chat-window');
-    const messageForm = document.getElementById('message-form');
-    const messageInput = document.getElementById('message-input');
-    const sendBtn = document.getElementById('send-btn');
-    const loadingSpinner = document.getElementById('loading-spinner');
-
-    let threadId = null;
-    let isWaiting = false;
-    const BACKEND_API_URL = '/api/chat'; // URL trỏ đến backend của chúng ta
-
-    async function initializeChat() {
-        try {
-            const response = await fetch(BACKEND_API_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'create_thread' })
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Không thể tạo luồng chat.');
-            }
-
-            const data = await response.json();
-            threadId = data.threadId;
-            console.log('Thread created with ID:', threadId);
-        } catch (error) {
-            console.error('Initialization Error:', error);
-            addMessageToUI(`Lỗi khởi tạo: ${error.message}`, 'error');
-            messageInput.disabled = true;
-            sendBtn.disabled = true;
-        }
-    }
-
-    messageForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const userMessage = messageInput.value.trim();
-        if (!userMessage || isWaiting || !threadId) return;
-
-        isWaiting = true;
-        setLoadingState(true);
-        addMessageToUI(userMessage, 'user');
-        
-        try {
-            const response = await fetch(BACKEND_API_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    action: 'send_message',
-                    userMessage: userMessage,
-                    threadId: threadId
-                })
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Lỗi khi gửi tin nhắn.');
-            }
-
-            const data = await response.json();
-            addMessageToUI(data.reply, 'assistant');
-        } catch (error) {
-            console.error('Chat Error:', error);
-            addMessageToUI(`Đã xảy ra lỗi: ${error.message}`, 'error');
-        } finally {
-            isWaiting = false;
-            setLoadingState(false);
-        }
-    });
-
-    function setLoadingState(isLoading) {
-        if(isLoading) {
-            messageInput.value = '';
-            messageInput.disabled = true;
-            sendBtn.disabled = true;
-            loadingSpinner.classList.remove('hidden');
-        } else {
-            messageInput.disabled = false;
-            sendBtn.disabled = false;
-            loadingSpinner.classList.add('hidden');
-            messageInput.focus();
-        }
-    }
-
-    function addMessageToUI(message, role) {
-        const messageWrapper = document.createElement('div');
-        const messageBubble = document.createElement('div');
-        messageBubble.classList.add('message-bubble', 'rounded-lg', 'py-2', 'px-4');
-        messageWrapper.classList.add('flex');
-        if (role === 'user') {
-            messageWrapper.classList.add('justify-end');
-            messageBubble.classList.add('bg-blue-600', 'text-white');
-        } else if (role === 'assistant') {
-            messageWrapper.classList.add('justify-start');
-            messageBubble.classList.add('bg-slate-200', 'text-slate-800');
-        } else {
-            messageWrapper.classList.add('justify-center');
-            messageBubble.classList.add('bg-red-100', 'text-red-700', 'border', 'border-red-300');
-        }
-        messageBubble.innerHTML = message.replace(/\n/g, '<br>');
-        messageWrapper.appendChild(messageBubble);
-        chatWindow.appendChild(messageWrapper);
-        chatWindow.scrollTop = chatWindow.scrollHeight;
-    }
-
-    initializeChat();
-});
-</script>
+<body>
+<p class="p1"><span class="s1">&lt;!DOCTYPE html&gt; &lt;html lang="vi"&gt; &lt;head&gt; &lt;meta charset="UTF-8"&gt; &lt;meta name="viewport" content="width=device-width, initial-scale=1.0"&gt; &lt;title&gt;Trợ lý Học tập POWER&lt;/title&gt; &lt;script src="[https://cdn.tailwindcss.com](https://cdn.tailwindcss.com)"&gt;&lt;/script&gt; &lt;style&gt; #chat-window::-webkit-scrollbar { width: 8px; } #chat-window::-webkit-scrollbar-track { background: #f1f5f9; } #chat-window::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 10px; } .message-bubble { max-width: 80%; } &lt;/style&gt; &lt;/head&gt; &lt;body class="bg-slate-100 flex items-center justify-center min-h-screen font-sans"&gt; &lt;div class="w-full max-w-2xl h-[90vh] flex flex-col bg-white rounded-2xl shadow-2xl"&gt; &lt;header class="p-4 border-b border-slate-200 text-center"&gt; &lt;h2 id="header-title" class="text-xl font-bold text-slate-800"&gt;Trợ lý Học tập POWER&lt;/h2&gt; &lt;p id="phase-indicator" class="text-sm text-slate-500 font-medium"&gt;Pha: PREPARE&lt;/p&gt; &lt;/header&gt; &lt;main id="chat-window" class="flex-1 p-6 space-y-4 overflow-y-auto"&gt;&lt;/main&gt; &lt;footer class="p-4 border-t border-slate-200 bg-white"&gt; &lt;div id="loading-spinner" class="hidden flex items-center justify-center mb-2"&gt; &lt;div class="animate-spin rounded-full h-5 w-5 border-b-2 border-slate-600"&gt;&lt;/div&gt; &lt;p class="ml-2 text-slate-600"&gt;Trợ lý đang xử lý...&lt;/p&gt; &lt;/div&gt; &lt;form id="message-form" class="flex items-center space-x-3"&gt; &lt;input type="text" id="message-input" placeholder="Nhập tin nhắn..." class="flex-1 w-full px-4 py-2 border border-slate-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500" autocomplete="off"&gt; &lt;button type="submit" id="send-btn" class="bg-blue-600 hover:bg-blue-700 text-white rounded-full p-3 flex items-center justify-center transition-colors"&gt; &lt;svg xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"&gt;&lt;line x1="22" y1="2" x2="11" y2="13"&gt;&lt;/line&gt;&lt;polygon points="22 2 15 22 11 13 2 9 22 2"&gt;&lt;/polygon&gt;&lt;/svg&gt; &lt;/button&gt; &lt;/form&gt; &lt;/footer&gt; &lt;/div&gt; &lt;script&gt; document.addEventListener('DOMContentLoaded', () =&gt; { // UI Elements const chatWindow = document.getElementById('chat-window'); const messageForm = document.getElementById('message-form'); const messageInput = document.getElementById('message-input'); const sendBtn = document.getElementById('send-btn'); const loadingSpinner = document.getElementById('loading-spinner'); const phaseIndicator = document.getElementById('phase-indicator'); // State let currentThreadId = null; let isWaiting = false; let currentPhase = 'PREPARE'; // Trạng thái pha POWER ban đầu // Hàm cập nhật giao diện theo pha function updatePhaseUI(phase) { currentPhase = phase; phaseIndicator.textContent = `Pha: ${phase}`; } // Khởi tạo cuộc trò chuyện async function initializeChat() { setWaitingState(true); addMessageToUI('Bắt đầu một phiên học tập mới...', 'system'); try { const response = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'create_thread' }) }); if (!response.ok) throw new Error('Không thể tạo luồng trò chuyện.'); const data = await response.json(); currentThreadId = data.threadId; addMessageToUI('Xin chào! Hãy bắt đầu pha PREPARE. Bạn muốn học về chủ đề gì?', 'assistant'); } catch (error) { addMessageToUI(`Lỗi khởi tạo: ${error.message}`, 'error'); } finally { setWaitingState(false); } } // Gửi tin nhắn messageForm.addEventListener('submit', async (e) =&gt; { e.preventDefault(); const userMessage = messageInput.value.trim(); if (!userMessage || isWaiting || !currentThreadId) return; setWaitingState(true); addMessageToUI(userMessage, 'user'); messageInput.value = ''; try { const response = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'send_message', userMessage: userMessage, threadId: currentThreadId }) }); if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.error || 'Lỗi không xác định từ server.'); } const data = await response.json(); addMessageToUI(data.reply, 'assistant'); // Cập nhật pha nếu có yêu cầu từ backend if (data.newPhase) { updatePhaseUI(data.newPhase); addMessageToUI(`Đã chuyển sang pha ${data.newPhase}.`, 'system'); } } catch (error) { console.error('Error during chat flow:', error); addMessageToUI(`Đã xảy ra lỗi: ${error.message}`, 'error'); } finally { setWaitingState(false); } }); function setWaitingState(waiting) { isWaiting = waiting; messageInput.disabled = waiting; sendBtn.disabled = waiting; loadingSpinner.classList.toggle('hidden', !waiting); if(!waiting) messageInput.focus(); } function addMessageToUI(message, role) { const messageWrapper = document.createElement('div'); const messageBubble = document.createElement('div'); messageBubble.classList.add('message-bubble', 'rounded-lg', 'py-2', 'px-4', 'break-words'); messageWrapper.classList.add('flex', 'mb-2'); if (role === 'user') { messageWrapper.classList.add('justify-end'); messageBubble.classList.add('bg-blue-600', 'text-white'); } else if (role === 'assistant') { messageWrapper.classList.add('justify-start'); messageBubble.classList.add('bg-slate-200', 'text-slate-800'); } else if (role === 'system' || role === 'error') { messageWrapper.classList.add('justify-center'); messageBubble.classList.add('text-xs', 'text-slate-500', 'italic', role === 'error' ? 'text-red-600' : ''); } // Dùng textContent để an toàn hơn, sau đó thay thế \n bằng &lt;br&gt; messageBubble.textContent = message; messageBubble.innerHTML = messageBubble.innerHTML.replace(/\n/g, '&lt;br&gt;'); messageWrapper.appendChild(messageBubble); chatWindow.appendChild(messageWrapper); chatWindow.scrollTop = chatWindow.scrollHeight; } initializeChat(); }); &lt;/script&gt; &lt;/body&gt; &lt;/html&gt;</span></p>
 </body>
 </html>

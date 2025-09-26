@@ -1,8 +1,7 @@
 {
-  "name": "openai-assistant-backend",
-  "version": "1.0.0",
-  "private": true,
   "dependencies": {
-    "openai": "^4.0.0"
+    "openai": "^4.20.1",
+    "google-spreadsheet": "^4.1.1" 
   }
 }
+
